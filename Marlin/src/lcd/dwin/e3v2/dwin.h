@@ -52,6 +52,7 @@ enum processID : uint8_t {
   AxisMove,
   TemperatureID,
   Motion,
+  Advanced,
   Info,
   Tune,
   #if HAS_PREHEAT
@@ -85,6 +86,9 @@ enum processID : uint8_t {
   Move5,
   Homeoffset,
   HomeoffsetRT,
+  ProbeYOffset,
+  ProbeXOffset,
+  RunoutDistance,
   #if HAS_HOTEND
     Extruder,
     Extruder_Refuel,
@@ -236,6 +240,7 @@ enum processID : uint8_t {
 #define Percent_Color     0xFE29  // Percentage color
 #define BarFill_Color     0x10E4  // Fill color of progress bar
 #define Select_Color      0x33BB  // Selected color
+#define Check_Color       0x4E5C  // Check-box check color
 
 extern uint8_t checkkey;
 extern float zprobe_zoffset;
@@ -259,6 +264,8 @@ typedef struct {
     float Move_E_scaled   = 0;
   #endif
   float offset_value      = 0;
+  float float_value      = 0;
+  int16_t integer_value      = 0;
   int8_t show_mode        = 0; // -1: Temperature control    0: Printing temperature
 } HMI_value_t;
 
@@ -360,6 +367,7 @@ void HMI_Leveling();    // Level the page
 void HMI_AxisMove();    // Axis movement menu
 void HMI_Temperature(); // Temperature menu
 void HMI_Motion();      // Sports menu
+void HMI_Advanced();      // Advanced menu
 void HMI_Info();        // Information menu
 void HMI_Tune();        // Adjust the menu
 
@@ -379,6 +387,8 @@ void EachMomentUpdate();
 void DWIN_HandleScreen();
 
 inline void DWIN_StartHoming() { HMI_flag.home_flag = true; }
+inline void Draw_Checkbox(uint8_t row, bool value);
+inline void Draw_Float(float value, uint8_t row, bool selected/*=false*/, uint8_t minunit/*=10*/);
 
 void DWIN_CompletedHoming();
 void DWIN_CompletedLeveling();
