@@ -388,7 +388,8 @@ void DWIN_HandleScreen();
 
 inline void DWIN_StartHoming() { HMI_flag.home_flag = true; }
 inline void Draw_Checkbox(uint8_t row, bool value);
-inline void Draw_Float(float value, uint8_t row, bool selected/*=false*/, uint8_t minunit/*=10*/);
+inline void Draw_Float(float value, uint8_t row, bool selected=false, uint8_t minunit=10);
+inline void Draw_Menu_Item(uint8_t row, uint8_t icon=0, char *label1=NULL, char *label2=NULL, bool more=false, bool centered=false);
 
 void DWIN_CompletedHoming();
 void DWIN_CompletedLeveling();

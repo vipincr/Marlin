@@ -107,7 +107,7 @@
 #define DWIN_FONT_HEAD font10x20
 
 #define MENU_CHAR_LIMIT  24
-#define STATUS_Y 360
+#define STATUS_Y 352
 
 // Fan speed limit
 #define FANON           255
@@ -170,6 +170,7 @@ float valuemin;
 float valuemax;
 uint8_t valueunit;
 uint8_t valuetype;
+uint8_t selected_row;
 
 typedef struct {
   uint8_t now, last;
@@ -1061,12 +1062,12 @@ void Draw_Advanced_Menu() {
   uint8_t i = 0;
   #define _ADVANCED_ICON(N) Draw_Menu_Line(++i, N)
   #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-    _ADVANCED_ICON(ICON_Extruder); //Filament Runout
+    _ADVANCED_ICON(ICON_Extruder); //FilamentRunout
     Draw_Checkbox(i, runout.enabled); 
   #endif
   #if ENABLED(HAS_FILAMENT_RUNOUT_DISTANCE)
-    _ADVANCED_ICON(ICON_MaxAccE); //Runout Distance
-     DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), runout.runout_distance());
+    _ADVANCED_ICON(ICON_MaxAccE); //RunoutDistance
+     DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), runout.runout_distance()*10);
   #endif
    #if ENABLED(POWER_LOSS_RECOVERY)
     _ADVANCED_ICON(ICON_Motion); //Power-loss Recovery
@@ -1074,9 +1075,9 @@ void Draw_Advanced_Menu() {
   #endif
   #if ENABLED(HAS_BED_PROBE)
     _ADVANCED_ICON(ICON_StepX); //Probe to Nozzle Offset
-    DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), probe.offset.x*100);
+    DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), probe.offset.x*10);
     _ADVANCED_ICON(ICON_StepY); //Probe to Nozzle Offset
-    DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), probe.offset.y*100);
+    DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), probe.offset.y*10);
   #endif
 }
 
@@ -1486,68 +1487,75 @@ void HMI_ZoffsetRT() {
 }
 
 void HMI_RunoutDistance(){
-  valuemin = 0;
-  valuemax = 100;
-  valueunit = 10;
+  valuemin = 0; valuemax = 100; valueunit = 10; selected_row = 2;
   ENCODER_DiffState encoder_diffState = Encoder_ReceiveAnalyze();
   if (encoder_diffState == ENCODER_DIFF_NO) return;
-  if (encoder_diffState == ENCODER_DIFF_CW) {
+  if (encoder_diffState == ENCODER_DIFF_CW)
     tempvalue += EncoderRate.encoderMoveValue;
-  }
-  else if (encoder_diffState == ENCODER_DIFF_CCW) {
+  else if (encoder_diffState == ENCODER_DIFF_CCW)
     tempvalue -= EncoderRate.encoderMoveValue;
-  }
   else if (encoder_diffState == ENCODER_DIFF_ENTER) {
     EncoderRate.enabled = false;
       if (HMI_ValueStruct.show_mode == -4) {
         checkkey = Advanced;
-        runout.set_runout_distance(constrain(tempvalue/valueunit, 0, 999));
-        Draw_Float(runout.runout_distance(), 2, false, valueunit);
+        runout.set_runout_distance(constrain(tempvalue, 0, 999));
+        Draw_Float(runout.runout_distance(), selected_row, false, valueunit);
       }
       DWIN_UpdateLCD();
       return;
   }
   NOLESS(tempvalue, (valuemin * valueunit));
   NOMORE(tempvalue, (valuemax * valueunit));
-  Draw_Float(tempvalue/valueunit, 2, true, valueunit);
-  //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(2), HMI_ValueStruct.float_value );
+  Draw_Float(tempvalue, selected_row, true, valueunit);
   DWIN_UpdateLCD();
 }
 
 void HMI_ProbeXOffset(){
+  valuemin = -100; valuemax = 100; valueunit = 10; selected_row = 4;
   ENCODER_DiffState encoder_diffState = Encoder_ReceiveAnalyze();
-  if (encoder_diffState != ENCODER_DIFF_NO) {
-    if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.float_value)) {
-      EncoderRate.enabled = true;
+  if (encoder_diffState == ENCODER_DIFF_NO) return;
+  if (encoder_diffState == ENCODER_DIFF_CW)
+    tempvalue += EncoderRate.encoderMoveValue;
+  else if (encoder_diffState == ENCODER_DIFF_CCW)
+    tempvalue -= EncoderRate.encoderMoveValue;
+  else if (encoder_diffState == ENCODER_DIFF_ENTER) {
+    EncoderRate.enabled = false;
       if (HMI_ValueStruct.show_mode == -4) {
         checkkey = Advanced;
-        probe.offset.x = HMI_ValueStruct.float_value*100;
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(4), probe.offset.x);
+        probe.offset.x = tempvalue;
+        Draw_Float(probe.offset.x, selected_row, false, valueunit);
       }
       DWIN_UpdateLCD();
       return;
-    }
-    DWIN_Draw_Signed_Float(font8x16, Select_Color, 2, UNITFDIGITS, 202, MBASE(4), HMI_ValueStruct.float_value);
-    DWIN_UpdateLCD();
   }
+  NOLESS(tempvalue, (valuemin * valueunit));
+  NOMORE(tempvalue, (valuemax * valueunit));
+  Draw_Float(tempvalue, selected_row, true, valueunit);
+  DWIN_UpdateLCD();
 }
 
 void HMI_ProbeYOffset(){
+  valuemin = -100; valuemax = 100; valueunit = 10; selected_row = 5;
   ENCODER_DiffState encoder_diffState = Encoder_ReceiveAnalyze();
-  if (encoder_diffState != ENCODER_DIFF_NO) {
-    if (Apply_Encoder(encoder_diffState, HMI_ValueStruct.float_value)) {
-      EncoderRate.enabled = true;
+  if (encoder_diffState == ENCODER_DIFF_NO) return;
+  if (encoder_diffState == ENCODER_DIFF_CW)
+    tempvalue += EncoderRate.encoderMoveValue;
+  else if (encoder_diffState == ENCODER_DIFF_CCW)
+    tempvalue -= EncoderRate.encoderMoveValue;
+  else if (encoder_diffState == ENCODER_DIFF_ENTER) {
+    EncoderRate.enabled = false;
       if (HMI_ValueStruct.show_mode == -4) {
         checkkey = Advanced;
-        probe.offset.y = HMI_ValueStruct.float_value;
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(5), probe.offset.y);
+        probe.offset.y = tempvalue;
+        Draw_Float(probe.offset.y, selected_row, false, valueunit);
       }
       DWIN_UpdateLCD();
       return;
-    }
-    DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(5), HMI_ValueStruct.float_value);
-    DWIN_UpdateLCD();
   }
+  NOLESS(tempvalue, (valuemin * valueunit));
+  NOMORE(tempvalue, (valuemax * valueunit));
+  Draw_Float(tempvalue, selected_row, true, valueunit);
+  DWIN_UpdateLCD();
 }
 
 
@@ -2965,10 +2973,11 @@ void HMI_Control() {
           Draw_Back_First();
         else
           Draw_Menu_Line(0, ICON_Temperature + select_control.now - 1);
-          
-        if (index_control == CONTROL_CASE_TEMP)
-        DWIN_Draw_Label(MBASE(MROWS), GET_TEXT_F(MSG_TEMPERATURE));
-        Draw_More_Icon(0 + MROWS - index_control + 1); // Temperature >
+        if (select_control.now-1 == CONTROL_CASE_TEMP){
+           Draw_Menu_Item(1, ICON_Temperature,  (char*)"Temperature" ,NULL, true);
+        }
+        //DWIN_Draw_Label(MBASE(MROWS), GET_TEXT_F(MSG_TEMPERATURE));
+        //Draw_More_Icon(0 + MROWS - index_control + 1); // Temperature >
         Draw_More_Icon(1 + MROWS - index_control + 1); // Motion >
       }
       else {
@@ -3844,8 +3853,8 @@ void HMI_Advanced() {
         checkkey = RunoutDistance;
         HMI_ValueStruct.show_mode = -4;
         tempvalue = runout.runout_distance();
-        Draw_Float(tempvalue, 2, true, 10);
-        //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(2), HMI_ValueStruct.float_value);
+        selected_row = 2;
+        Draw_Float(tempvalue, selected_row, true, 10);
         EncoderRate.enabled = true;
         break;
       case ADVANCED_CASE_POWER_LOSS_RECOVERY:   // Max speed
@@ -3855,15 +3864,17 @@ void HMI_Advanced() {
       case ADVANCED_CASE_PROBE_X_OFFSET:  // Max acceleration
         checkkey = ProbeXOffset;
         HMI_ValueStruct.show_mode = -4;
-        HMI_ValueStruct.float_value = probe.offset.x * 100;
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(4), HMI_ValueStruct.float_value);
+        tempvalue = probe.offset.x;
+        selected_row = 4;
+        Draw_Float(tempvalue, selected_row, true, 10);
         EncoderRate.enabled = true;
         break;
       case ADVANCED_CASE_PROBE_Y_OFFSET:  // Max acceleratio
         checkkey = ProbeYOffset;
         HMI_ValueStruct.show_mode = -4;
-        HMI_ValueStruct.float_value = probe.offset.y * 100;
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 202, MBASE(5), HMI_ValueStruct.float_value);
+        tempvalue = probe.offset.y;
+        selected_row = 5;
+        Draw_Float(tempvalue, selected_row, true, 10);
         EncoderRate.enabled = true;
         break;
       default: break;
@@ -4570,4 +4581,15 @@ inline void Draw_Float(float value, uint8_t row, bool selected/*=false*/, uint8_
     DWIN_Draw_FloatValue(true, true, 0, DWIN_FONT_MENU, Color_White, bColor, 5-log10(minunit), log10(minunit), 202, MBASE(row), value * minunit);
     DWIN_Draw_String(false, true, DWIN_FONT_MENU, Color_White, bColor, 196, MBASE(row), F(" "));
   }
+}
+
+inline void Draw_Menu_Item(uint8_t row, uint8_t icon/*=0*/, char *label1, char *label2, bool more/*=false*/, bool centered/*=false*/) {
+  const uint8_t label_offset_y = !(label1 && label2) ? 0 : 16 * 3 / 5;
+  const uint8_t label1_offset_x = !centered ? LBLX : LBLX * 4/5 + max(LBLX * 1U/5, (DWIN_WIDTH - LBLX - (label1 ? strlen(label1) : 0) * MENU_CHR_W) / 2);
+  const uint8_t label2_offset_x = !centered ? LBLX : LBLX * 4/5 + max(LBLX * 1U/5, (DWIN_WIDTH - LBLX - (label2 ? strlen(label2) : 0) * MENU_CHR_W) / 2);
+  if (label1) DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, label1_offset_x, MBASE(row) - 1 - label_offset_y, label1); // Draw Label
+  if (label2) DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, label2_offset_x, MBASE(row) - 1 + label_offset_y, label2); // Draw Label
+  if (icon) DWIN_ICON_Show(ICON, icon, 26, MBASE(row) - 3);   //Draw Menu Icon
+  if (more) DWIN_ICON_Show(ICON, ICON_More, 226, MBASE(row) - 3); // Draw More Arrow
+  DWIN_Draw_Line(Line_Color, 16, MBASE(row) + 33, 256, MBASE(row) + 34); // Draw Menu Line
 }
