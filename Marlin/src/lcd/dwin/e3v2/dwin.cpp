@@ -171,7 +171,9 @@ float valuemax;
 uint8_t valueunit;
 uint8_t valuetype;
 uint8_t selected_row;
-
+bool liveadjust = false;
+bool bedonly = false;
+float zoffsetvalue = 0;
 typedef struct {
   uint8_t now, last;
   void set(uint8_t v) { now = last = v; }
@@ -2599,19 +2601,17 @@ void HMI_AudioFeedback(const bool success=true) {
 inline void Draw_ZTool_Menu() {
   Clear_Main_Window();
   Draw_Title("Z Tool [Smith3D.com]"); // TODO: GET_TEXT_F
-
-
    #if HAS_BED_PROBE
-     // DWIN_Frame_AreaCopy(1, 93, 179, 271-130, 479-290, LBLX, MBASE(1)); // "Z-Offset"
-       DWIN_Draw_String(false,false,font8x16,Color_White,Color_Bg_Black, 64, MBASE(1), (char*)"Z-Offset");
-      DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(1), probe.offset.z*100);
-      DWIN_Draw_String(false,false,font8x16,Color_White,Color_Bg_Black, 64, MBASE(2), (char*)"Re-Home Z");
+      Draw_Menu_Item(1, ICON_SetZOffset,  (char*)"Z-Offset");
+      zoffsetvalue = probe.offset.z;
+      Draw_Float(zoffsetvalue*100, 1, false, 100);
+      Draw_Menu_Item(2, ICON_Homing,  (char*)"Re-Home Z");
+      Draw_Menu_Item(3, ICON_Axis, (char*)"Microstep Up");
+      Draw_Menu_Item(4, ICON_Axis, (char*)"Microstep Down");
     #else
       DWIN_Frame_AreaCopy(1, 1, 76, 271-165, 479-393, LBLX, MBASE(1)); // "..."
     #endif
-
   Draw_Back_First(select_ztool.now == 0);
-  LOOP_L_N(i, 2) Draw_Menu_Line(i + 1, ICON_SetHome);
 }
 
 
@@ -3726,7 +3726,7 @@ void HMI_ZTool() {
   char gcode_string[80];
   // Avoid flicker by updating only the previous menu
   if (encoder_diffState == ENCODER_DIFF_CW) {
-    if (select_ztool.inc(3)) Move_Highlight(1, select_ztool.now);
+    if (select_ztool.inc(5)) Move_Highlight(1, select_ztool.now);
   }
   else if (encoder_diffState == ENCODER_DIFF_CCW) {
     if (select_ztool.dec()) Move_Highlight(-1, select_ztool.now);
@@ -3750,7 +3750,8 @@ void HMI_ZTool() {
           checkkey = HomeoffsetRT;
           HMI_ValueStruct.show_mode = -4;
           HMI_ValueStruct.offset_value = probe.offset.z * 100;
-          DWIN_Draw_Signed_Float(font8x16, Select_Color, 2, 2, 202, MBASE(1), HMI_ValueStruct.offset_value);
+          zoffsetvalue = probe.offset.z;
+          DWIN_Draw_Signed_Float(font8x16, Select_Color, 2, 2, 202, MBASE(1), zoffsetvalue*100);
           EncoderRate.enabled = true;
         #else
           // Apply workspace offset, making the current position 0,0,0
@@ -3763,6 +3764,18 @@ void HMI_ZTool() {
         gcode.process_subcommands_now_P(PSTR(gcode_string ));
         gcode.process_subcommands_now_P( PSTR("G28 Z")); //Rehome Z only
         gcode.process_subcommands_now_P( PSTR("G1 F300 Z0")); 
+        break;
+      case 3: //Microstep Up
+        gcode.process_subcommands_now_P(PSTR("M290 Z0.01"));
+        planner.synchronize();
+        zoffsetvalue += 0.01;
+        Draw_Float(zoffsetvalue, 1, false, 100);
+        break;
+      case 4: //Microstep Down
+        gcode.process_subcommands_now_P(PSTR("M290 Z-0.01"));
+        planner.synchronize();
+        zoffsetvalue -= 0.01;
+        Draw_Float(zoffsetvalue, 1, false, 100);
         break;
       default:
         break;
