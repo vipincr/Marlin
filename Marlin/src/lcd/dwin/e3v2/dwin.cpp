@@ -1475,7 +1475,8 @@ void HMI_ZoffsetRT() {
       #endif
       if (HMI_ValueStruct.show_mode == -4) {
         checkkey = ZTool;
-        DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(1), TERN(HAS_ONESTEP_LEVELING, probe.offset.z*100, HMI_ValueStruct.offset_value));
+        Draw_Float(zoffsetvalue, 1, false, 100);
+        //DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, 2, 202, MBASE(1), TERN(HAS_ONESTEP_LEVELING, probe.offset.z*100, HMI_ValueStruct.offset_value));
       }
       
       DWIN_UpdateLCD();
@@ -2604,7 +2605,7 @@ inline void Draw_ZTool_Menu() {
    #if HAS_BED_PROBE
       Draw_Menu_Item(1, ICON_SetZOffset,  (char*)"Z-Offset");
       zoffsetvalue = probe.offset.z;
-      Draw_Float(zoffsetvalue*100, 1, false, 100);
+      Draw_Float(zoffsetvalue, 1, false, 100);
       Draw_Menu_Item(2, ICON_Homing,  (char*)"Re-Home Z");
       Draw_Menu_Item(3, ICON_Axis, (char*)"Microstep Up");
       Draw_Menu_Item(4, ICON_Axis, (char*)"Microstep Down");
