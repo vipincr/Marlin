@@ -3751,7 +3751,7 @@ void HMI_ZTool() {
           HMI_ValueStruct.show_mode = -4;
           HMI_ValueStruct.offset_value = probe.offset.z * 100;
           zoffsetvalue = probe.offset.z;
-          DWIN_Draw_Signed_Float(font8x16, Select_Color, 2, 2, 202, MBASE(1), zoffsetvalue*100);
+          Draw_Float(zoffsetvalue, 1, true, 100);
           EncoderRate.enabled = true;
         #else
           // Apply workspace offset, making the current position 0,0,0
