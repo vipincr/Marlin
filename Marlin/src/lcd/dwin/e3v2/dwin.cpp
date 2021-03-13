@@ -2952,11 +2952,9 @@ void HMI_Control() {
         Draw_More_Icon(CONTROL_CASE_MOVE + MROWS - index_control); // Motion >
         Draw_More_Icon(CONTROL_CASE_ADVANCED + MROWS - index_control); // Advanced >
         if (index_control == CONTROL_CASE_RESET)
-          DWIN_Draw_Label(MBASE(MROWS), GET_TEXT_F(MSG_RESTORE_DEFAULTS));
-
+          Draw_Menu_Item(CONTROL_CASE_RESET + MROWS - index_control, ICON_ResumeEEPROM,  (char*)"Restore Defaults");
         if (index_control == CONTROL_CASE_INFO) {
-          Draw_More_Icon(CONTROL_CASE_INFO + MROWS - index_control); // Info >
-          Item_Control_Info(MBASE(MROWS));
+          Draw_Menu_Item(CONTROL_CASE_INFO + MROWS - index_control, ICON_Info,  (char*)"Info" ,NULL, true);
         }
       }
       else {
@@ -2972,12 +2970,8 @@ void HMI_Control() {
         if (index_control == MROWS)
           Draw_Back_First();
         else
-          Draw_Menu_Line(0, ICON_Temperature + select_control.now - 1);
-        if (select_control.now-1 == CONTROL_CASE_TEMP){
-           Draw_Menu_Item(1, ICON_Temperature,  (char*)"Temperature" ,NULL, true);
-        }
-        //DWIN_Draw_Label(MBASE(MROWS), GET_TEXT_F(MSG_TEMPERATURE));
-        //Draw_More_Icon(0 + MROWS - index_control + 1); // Temperature >
+          Draw_Menu_Item(0, ICON_Temperature + select_control.now - 1,    (char*)"Temperature" ,NULL, true);
+        
         Draw_More_Icon(1 + MROWS - index_control + 1); // Motion >
       }
       else {
@@ -4584,7 +4578,7 @@ inline void Draw_Float(float value, uint8_t row, bool selected/*=false*/, uint8_
 }
 
 inline void Draw_Menu_Item(uint8_t row, uint8_t icon/*=0*/, char *label1, char *label2, bool more/*=false*/, bool centered/*=false*/) {
-  const uint8_t label_offset_y = !(label1 && label2) ? 0 : 16 * 3 / 5;
+  const uint8_t label_offset_y = !(label1 && label2) ? 0 : 16U * 3 / 5;
   const uint8_t label1_offset_x = !centered ? LBLX : LBLX * 4/5 + max(LBLX * 1U/5, (DWIN_WIDTH - LBLX - (label1 ? strlen(label1) : 0) * MENU_CHR_W) / 2);
   const uint8_t label2_offset_x = !centered ? LBLX : LBLX * 4/5 + max(LBLX * 1U/5, (DWIN_WIDTH - LBLX - (label2 ? strlen(label2) : 0) * MENU_CHR_W) / 2);
   if (label1) DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, label1_offset_x, MBASE(row) - 1 - label_offset_y, label1); // Draw Label
