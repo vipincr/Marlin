@@ -88,6 +88,7 @@ enum processID : uint8_t {
   HomeoffsetRT,
   ProbeYOffset,
   ProbeXOffset,
+  AutoPIDTune,
   RunoutDistance,
   #if HAS_HOTEND
     Extruder,
@@ -318,6 +319,7 @@ void Popup_Window_Resume();
 void Popup_Window_Home(const bool parking=false);
 void Popup_Window_Aux(void);
 void Popup_Window_Leveling();
+void Popup_Window_AutoPIDTuning();
 
 void Goto_PrintProcess();
 void Goto_MainMenu();

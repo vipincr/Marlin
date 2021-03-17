@@ -174,6 +174,9 @@ uint8_t selected_row;
 bool liveadjust = false;
 bool bedonly = false;
 float zoffsetvalue = 0;
+bool pidtunenozzle = true;
+uint8_t autopid_cycles = 5;
+
 typedef struct {
   uint8_t now, last;
   void set(uint8_t v) { now = last = v; }
@@ -197,7 +200,8 @@ uint8_t index_file     = MROWS,
         index_aux = MROWS,
         index_control  = MROWS,
         index_leveling = MROWS,
-        index_tune     = MROWS;
+        index_tune     = MROWS,
+        index_advanced     = MROWS;
 
 bool dwin_abort_flag = false; // Flag to reset feedrate, return to Home
 
@@ -535,7 +539,14 @@ inline bool Apply_Encoder(const ENCODER_DiffState &encoder_diffState, auto &valr
 #define ADVANCED_CASE_POWER_LOSS_RECOVERY  3
 #define ADVANCED_CASE_PROBE_X_OFFSET  4
 #define ADVANCED_CASE_PROBE_Y_OFFSET  5
+//#define ADVANCED_CASE_AUTOPIDTUNE  (ADVANCED_CASE_PROBE_Y_OFFSET + 0)
 #define ADVANCED_CASE_TOTAL  ADVANCED_CASE_PROBE_Y_OFFSET
+
+#define AUTOPID_CASE_TEMP 1
+#define AUTOPID_CASE_HOTEND_OR_BED 2
+#define AUTOPID_CASE_TEST_CYCLE 3
+#define AUTOPID_CASE_START_TUNE 4
+#define AUTOPID_CASE_TOTAL  AUTOPID_CASE_START_TUNE
 
 #define PREPARE_CASE_MOVE  1
 #define PREPARE_CASE_DISA  2
@@ -1049,6 +1060,18 @@ void Draw_Motion_Menu() {
   _MOTION_ICON(MOTION_CASE_STEPS); Draw_More_Icon(i);
 }
 
+void Draw_AutoPIDTune_Menu(){
+  Clear_Main_Window();
+  Draw_Title("Auto PID Tune");
+  Draw_Menu_Item(AUTOPID_CASE_TEMP, ICON_SetBedTemp,  (char*)"Temperature");
+  Draw_Menu_Item(AUTOPID_CASE_HOTEND_OR_BED, ICON_HotendTemp,  (char*)"To Tune: Hotend");
+  Draw_Menu_Item(AUTOPID_CASE_TEST_CYCLE, ICON_Info,  (char*)"Number of Cycles");
+  Draw_Menu_Item(AUTOPID_CASE_START_TUNE, ICON_Axis,  (char*)"Start Tuning");
+
+  Draw_Back_First(select_prepare.now == 0);
+  if (select_prepare.now) Draw_Menu_Cursor(select_prepare.now);
+}
+
 void Draw_Advanced_Menu() {
   Clear_Main_Window();
   Draw_Title("Advanced Settings");
@@ -1081,6 +1104,10 @@ void Draw_Advanced_Menu() {
     _ADVANCED_ICON(ICON_StepY); //Probe to Nozzle Offset
     DWIN_Draw_Signed_Float(font8x16, Color_Bg_Black, 2, UNITFDIGITS, 216, MBASE(i), probe.offset.y*10);
   #endif
+  if(i<5){
+    _ADVANCED_ICON(ICON_Temperature); //AutoPID
+    Draw_Menu_Item(CONTROL_CASE_INFO + MROWS - index_control, ICON_Info,  (char*)"Auto PID Tune" ,NULL, true);
+  }
 }
 
 //
@@ -1188,6 +1215,23 @@ void Popup_Window_Home(const bool parking/*=false*/) {
     DWIN_Draw_String(false, true, font8x16, Popup_Text_Color, Color_Bg_Window, (272 - 8 * 23) / 2, 260, F("Please wait until done."));
   }
 }
+
+void Popup_Window_AutoPIDTuning() {
+  Clear_Main_Window();
+  Draw_Popup_Bkgd_60();
+  DWIN_ICON_Show(ICON, ICON_BLTouch, 101, 105);
+  if (HMI_IsChinese()) {
+    DWIN_Frame_AreaCopy(1, 0, 371, 33, 386, 85, 240);
+    DWIN_Frame_AreaCopy(1, 203, 286, 271, 302, 118, 240);
+    DWIN_Frame_AreaCopy(1, 0, 389, 150, 402, 61, 280);
+  }
+  else {
+    DWIN_Draw_String(false, true, font8x16, Popup_Text_Color, Color_Bg_Window, (272 - 8 * 10) / 2, 210, F("Auto PID Tuning"));
+    DWIN_Draw_String(false, true, font8x16, Popup_Text_Color, Color_Bg_Window, (272 - 8 * 23) / 2, 240, F("This may takes a few minutes."));
+    DWIN_Draw_String(false, true, font8x16, Popup_Text_Color, Color_Bg_Window, (272 - 8 * 23) / 2, 260, F("Please wait until done."));
+  }
+}
+
 
 #if HAS_ONESTEP_LEVELING
 
@@ -2806,6 +2850,9 @@ void HMI_Prepare() {
         gcode.process_subcommands_now_P( PSTR("M220 S100"));
         gcode.process_subcommands_now_P( PSTR("G28"));
         gcode.process_subcommands_now_P( PSTR("G92 E0"));
+        #if ANY(HAS_ONESTEP_LEVELING, PROBE_MANUALLY)
+          gcode.process_subcommands_now_P(PSTR("M420 S0"));
+        #endif
         planner.synchronize();
         current_position.e = HMI_ValueStruct.Move_E_scaled = 0;
         Draw_AUX_Menu();
@@ -3587,13 +3634,13 @@ void HMI_AUX() {
         checkkey = Prepare;
         select_prepare.set(1);
         index_prepare = MROWS;
+        #if ANY(HAS_ONESTEP_LEVELING, PROBE_MANUALLY)
+          gcode.process_subcommands_now_P(PSTR("M420 S1"));
+        #endif
         Draw_Prepare_Menu();
         break;
       case 1: // btm left
-       // checkkey = Move1;
          index_aux = MROWS;
-         //Popup_Window_Aux();
-         //DWIN_UpdateLCD();
         gcode.process_subcommands_now_P( PSTR("G1 F4000"));
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
         gcode.process_subcommands_now_P( PSTR("G1 X20 Y20"));
@@ -3603,7 +3650,6 @@ void HMI_AUX() {
         planner.synchronize();
         break;
       case 2: // top left
-       // checkkey = Move2;
        index_aux = MROWS;
         gcode.process_subcommands_now_P( PSTR("G1 F4000"));
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
@@ -3613,7 +3659,6 @@ void HMI_AUX() {
         planner.synchronize();
         break;
       case 3: // top right
-       // checkkey = Move3;
         index_aux = MROWS;
         gcode.process_subcommands_now_P( PSTR("G1 F4000"));
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
@@ -3623,7 +3668,6 @@ void HMI_AUX() {
         planner.synchronize();
         break;
       case 4: // bottom right
-        //checkkey = Move4;
         index_aux = MROWS;
         gcode.process_subcommands_now_P( PSTR("G1 F4000"));
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
@@ -3634,7 +3678,6 @@ void HMI_AUX() {
          
         break;
       case 5: // transmission ratio
-        //checkkey = Move5;
          index_aux = MROWS;
         gcode.process_subcommands_now_P( PSTR("G1 F4000"));
         gcode.process_subcommands_now_P( PSTR("G1 Z10"));
@@ -3840,10 +3883,35 @@ void HMI_Advanced() {
 
   // Avoid flicker by updating only the previous menu
   if (encoder_diffState == ENCODER_DIFF_CW) {
-    if (select_motion.inc(1 + ADVANCED_CASE_TOTAL)) Move_Highlight(1, select_motion.now);
+    if (select_motion.inc(1 + ADVANCED_CASE_TOTAL)){
+      if(select_motion.now > MROWS && select_motion.now > index_advanced){
+        index_advanced = select_motion.now;
+        Scroll_Menu(DWIN_SCROLL_UP);
+        Draw_Menu_Icon(MROWS, ICON_Axis + select_motion.now - 1);
+        //if (index_advanced == ADVANCED_CASE_AUTOPIDTUNE) 
+        //Draw_Menu_Item(5, ICON_Temperature,  (char*)"Auto PID Tune" ,NULL, true);
+      }
+      else {
+        Move_Highlight(1, select_motion.now + MROWS - index_advanced);
+      }
+    }
   }
   else if (encoder_diffState == ENCODER_DIFF_CCW) {
-    if (select_motion.dec()) Move_Highlight(-1, select_motion.now);
+    if (select_motion.dec()){
+      if (select_motion.now < index_advanced - MROWS) {
+        index_advanced--;
+         Scroll_Menu(DWIN_SCROLL_DOWN);
+        if (index_advanced == MROWS)
+          Draw_Back_First();
+        else
+          Draw_Menu_Line(0, ICON_Axis + select_motion.now - 1);
+        //if (index_advanced == 6) 
+        // Draw_Menu_Item(0, ICON_Info,  (char*)"Auto PID Tune" ,NULL, true);
+      }
+      else{
+        Move_Highlight(-1, select_motion.now + MROWS - index_advanced);
+      }
+    }
   }
   else if (encoder_diffState == ENCODER_DIFF_ENTER) {
     switch (select_motion.now) {
@@ -3885,11 +3953,64 @@ void HMI_Advanced() {
         Draw_Float(tempvalue, selected_row, true, 10);
         EncoderRate.enabled = true;
         break;
+      //case ADVANCED_CASE_AUTOPIDTUNE:  // Max acceleratio
+      //  checkkey = AutoPIDTune;
+      //  HMI_ValueStruct.show_mode = -4;
+      //  tempvalue = probe.offset.y;
+      //  Draw_AutoPIDTune_Menu();
+      //  break;
       default: break;
     }
   }
   DWIN_UpdateLCD();
 }
+
+/* Advanced */
+void HMI_AutoPIDTune() {
+  ENCODER_DiffState encoder_diffState = get_encoder_state();
+  if (encoder_diffState == ENCODER_DIFF_NO) return;
+
+  // Avoid flicker by updating only the previous menu
+  if (encoder_diffState == ENCODER_DIFF_CW) {
+    if (select_prepare.inc(1 + AUTOPID_CASE_TOTAL)) Move_Highlight(1, select_prepare.now);
+  }
+  else if (encoder_diffState == ENCODER_DIFF_CCW) {
+    if (select_prepare.dec()) Move_Highlight(-1, select_prepare.now);
+  }
+  else if (encoder_diffState == ENCODER_DIFF_ENTER) {
+    switch (select_prepare.now) {
+      case 0: // Back
+        checkkey = Advanced;
+        //select_prepare.set(ADVANCED_CASE_AUTOPIDTUNE);
+        index_advanced = MROWS;
+        Draw_Advanced_Menu();
+        break;
+      case AUTOPID_CASE_TEMP:   // Temp to Tune
+        break;
+      case AUTOPID_CASE_HOTEND_OR_BED:   // Nozzle Or Bed
+        if(pidtunenozzle)
+        Draw_Menu_Item(AUTOPID_CASE_HOTEND_OR_BED, ICON_BedTemp,  (char*)"To Tune: Heated Bed");
+        else Draw_Menu_Item(AUTOPID_CASE_HOTEND_OR_BED, ICON_HotendTemp,  (char*)"To Tune: Hotend");
+        pidtunenozzle = !pidtunenozzle;
+        break;
+      case AUTOPID_CASE_TEST_CYCLE:   // Test Cycle
+        DWIN_Draw_IntValue(true, true, 0, font8x16, Color_White, Color_Bg_Black, 3, 216, 3, autopid_cycles);
+        break;
+      case AUTOPID_CASE_START_TUNE:   // Start Tune
+        gcode.process_subcommands_now_P(PSTR("M303 E0 S220 C3"));//Reload SD Card
+        Popup_Window_AutoPIDTuning();
+        DWIN_UpdateLCD();
+        planner.synchronize();
+        Draw_AutoPIDTune_Menu();
+        DWIN_UpdateLCD();
+        break;
+      default: break;
+    }
+  }
+  DWIN_UpdateLCD();
+}
+
+
 
 /* Info */
 void HMI_Info() {
@@ -4410,6 +4531,7 @@ void DWIN_HandleScreen() {
     case TemperatureID:   HMI_Temperature(); break;
     case Motion:          HMI_Motion(); break;
     case Advanced:        HMI_Advanced(); break;
+    case AutoPIDTune:  HMI_AutoPIDTune(); break;
     case Info:            HMI_Info(); break;
     case Tune:            HMI_Tune(); break;
     #if HAS_PREHEAT
@@ -4601,3 +4723,21 @@ inline void Draw_Menu_Item(uint8_t row, uint8_t icon/*=0*/, char *label1, char *
   if (more) DWIN_ICON_Show(ICON, ICON_More, 226, MBASE(row) - 3); // Draw More Arrow
   DWIN_Draw_Line(Line_Color, 16, MBASE(row) + 33, 256, MBASE(row) + 34); // Draw Menu Line
 }
+
+//  void Popup_Handler(uint8_t popupid, bool option/*=false*/) {
+//   popup = last_popup = popupid;
+//   switch (popupid) {
+//     case SaveToEEPROM:
+//       Draw_Popup((char*)"Leveling Complete", (char*)"Save to EEPROM?", (char*)"", Popup);
+//       break;
+//     case PidBadExtruder:
+//       Draw_Popup((char*)"PID Autotune failed", (char*)"Bad extruder!", (char*)"", Confirm, ICON_BLTouch);
+//       break;
+//     case PidTimeout:
+//       Draw_Popup((char*)"PID Autotune failed", (char*)"Timeout!", (char*)"", Confirm, ICON_BLTouch);
+//       break;
+//     case PidDone:
+//       Draw_Popup((char*)"PID tuning done", (char*)"", (char*)"", Confirm, ICON_BLTouch);
+//       break;
+//   }
+// } 
