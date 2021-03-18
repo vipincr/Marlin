@@ -1302,22 +1302,22 @@ void Draw_Print_ProgressBar() {
 
 void Draw_Print_ProgressElapsed() {
   duration_t elapsed = print_job_timer.duration(); // print timer
-  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 42, 212, elapsed.value / 3600);
-  DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, 58, 212, F(":"));
-  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 66, 212, (elapsed.value % 3600) / 60);
+  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 42, 187, elapsed.value / 3600);
+  DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, 58, 187, F(":"));
+  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 66, 187, (elapsed.value % 3600) / 60);
 }
 
 void Draw_Print_ProgressRemain() {
-  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 176, 212, _remain_time / 3600);
-  DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, 192, 212, F(":"));
-  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 200, 212, (_remain_time % 3600) / 60);
+  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 176, 187, _remain_time / 3600);
+  DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, 192, 187, F(":"));
+  DWIN_Draw_IntValue(true, true, 1, font8x16, Color_White, Color_Bg_Black, 2, 200, 187, (_remain_time % 3600) / 60);
 }
 
 void Goto_PrintProcess() {
   checkkey = PrintProcess;
 
   Clear_Main_Window();
-  Draw_Printing_Screen();
+  //Draw_Printing_Screen();
 
   ICON_Tune();
   if (printingIsPaused()) ICON_Continue(); else ICON_Pause();
@@ -1328,8 +1328,11 @@ void Goto_PrintProcess() {
   const int8_t npos = _MAX(0U, DWIN_WIDTH - strlen(name) * MENU_CHR_W) / 2;
   DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, npos, 60, name);
 
-  DWIN_ICON_Show(ICON, ICON_PrintTime, 17, 193);
-  DWIN_ICON_Show(ICON, ICON_RemainTime, 150, 191);
+
+  DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, 41, 163, (char*)"Elapsed");
+  DWIN_Draw_String(false, false, DWIN_FONT_MENU,  Color_White, Color_Bg_Black, 176, 163, (char*)"Remaining");
+  DWIN_ICON_Show(ICON, ICON_PrintTime, 17, 171);
+  DWIN_ICON_Show(ICON, ICON_RemainTime, 150, 169);
 
   Draw_Print_ProgressBar();
   Draw_Print_ProgressElapsed();
@@ -1511,6 +1514,7 @@ void HMI_ZoffsetRT() {
       dwin_zoffset = HMI_ValueStruct.offset_value / 100;
       #if HAS_BED_PROBE
         probe.offset.z = dwin_zoffset;
+        zoffsetvalue = probe.offset.z;
         settings.save();
         gcode.process_subcommands_now_P(PSTR("G91" ));
         sprintf_P(gcode_string, PSTR("G1 Z%.2f F200"), (dwin_zoffset - last_zoffset));
@@ -1528,7 +1532,7 @@ void HMI_ZoffsetRT() {
     }
     NOLESS(HMI_ValueStruct.offset_value, (Z_PROBE_OFFSET_RANGE_MIN)*100);
     NOMORE(HMI_ValueStruct.offset_value, (Z_PROBE_OFFSET_RANGE_MAX)*100);
-    DWIN_Draw_Signed_Float(font8x16, Select_Color, 2, 2, 202, MBASE(1), HMI_ValueStruct.offset_value);
+    Draw_Float(HMI_ValueStruct.offset_value/100, 1, true, 100);
     DWIN_UpdateLCD();
   }
 }
@@ -4601,16 +4605,7 @@ void DWIN_CompletedLeveling() {
 void Print_Status_Message(char * const text) {
   LOOP_L_N(i, _MIN((size_t)64, strlen(text))) statusmsg[i] = text[i];
   statusmsg[_MIN((size_t)64, strlen(text))] = '\0';
-  if (checkkey == PrintProcess) {
-    DWIN_Draw_Rectangle(1, Color_Bg_Black, 8, 214, DWIN_WIDTH-8, 238);
-    const int8_t npos = _MAX(0U, DWIN_WIDTH - strlen(statusmsg) * MENU_CHR_W) / 2;
-    DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, npos, 219, statusmsg);
-  }
-  else {
-    DWIN_Draw_Rectangle(1, Color_Bg_Black, 8, 352, DWIN_WIDTH-8, 376);
-    const int8_t npos = _MAX(0U, DWIN_WIDTH - strlen(statusmsg) * MENU_CHR_W) / 2;
-    DWIN_Draw_String(false, false, font8x16, Color_White, Color_Bg_Black, npos, 357, statusmsg);
-  }
+  Update_Status_Bar();
 }
 
 void Update_Status_Bar() {
@@ -4638,7 +4633,7 @@ void Update_Status_Bar() {
         LOOP_S_L_N(i, 30+pos, 30) dispmsg[i] = statusmsg[i-(30+pos)];
       }
       dispmsg[len] = '\0';
-      if (checkkey == PrintProcess) {
+      if (checkkey == PrintProcess || checkkey == Tune) {
         DWIN_Draw_Rectangle(1, Color_Bg_Black, 8, 214, DWIN_WIDTH-8, 238);
         const int8_t npos = (DWIN_WIDTH - 30 * MENU_CHR_W) / 2;
         DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, npos, 219, dispmsg);
@@ -4654,7 +4649,7 @@ void Update_Status_Bar() {
     } else {
       if (new_msg) {
         new_msg = false;
-        if (checkkey == PrintProcess) {
+        if (checkkey == PrintProcess || checkkey == Tune) {
           DWIN_Draw_Rectangle(1, Color_Bg_Black, 8, 214, DWIN_WIDTH-8, 238);
           const int8_t npos = (DWIN_WIDTH - strlen(statusmsg) * MENU_CHR_W) / 2;
           DWIN_Draw_String(false, false, DWIN_FONT_MENU, Color_White, Color_Bg_Black, npos, 219, statusmsg);
