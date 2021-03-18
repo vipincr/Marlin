@@ -4586,6 +4586,7 @@ void DWIN_CompletedHoming() {
     checkkey = Prepare;
     select_prepare.now = PREPARE_CASE_HOME;
     index_prepare = MROWS;
+    gcode.process_subcommands_now_P( PSTR("M117 Homing Done"));
     Draw_Prepare_Menu();
   }
   else if (checkkey == Back_Main) {
