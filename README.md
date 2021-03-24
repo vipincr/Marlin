@@ -1,4 +1,4 @@
-# Ender 3 V2 Smith3D Firmware & Jyer Firmware Fork (24 March 2020)
+# Ender 3 V2 Smith3D Firmware & Jyer Firmware Fork (24 March 2021)
 As there are better firmware created by Jyers, soon we will be moving from Marlin fork to Jyer fork. This fork will only be pulling the latest bugfixes from Marlin instead.
 
 Smith3D Jyer Fork coming soon
