@@ -1,3 +1,14 @@
+# Ender 3 V2 Smith3D Firmware & Jyer Firmware Fork (24 March 2020)
+As there are better firmware created by Jyers, soon we will be moving from Marlin fork to Jyer fork. This fork will only be pulling the latest bugfixes from Marlin instead.
+
+Smith3D Jyer Fork coming soon
+Jyer Firmware https://github.com/Jyers/Marlin
+
+# Marlin 3D Printer Firmware
+
+![GitHub](https://img.shields.io/github/license/marlinfirmware/marlin.svg)
+
+
 # Marlin 3D Printer Firmware
 
 ![GitHub](https://img.shields.io/github/license/marlinfirmware/marlin.svg)
