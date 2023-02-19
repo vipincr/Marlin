@@ -138,9 +138,9 @@
 //#define FAN_PIN                             PC6   // "FAN0"
 //#define FAN1_PIN                            PC7   // "FAN1"
 //#define FAN2_PIN                            PB15  // "FAN2"
-#define FAN_PIN                             PB15   // "FAN0"
+#define FAN_PIN                             PC6    // "FAN0"
 #define FAN1_PIN                            PC7   // "FAN1"
-#define FAN2_PIN                            PC6  // "FAN2"
+#define FAN2_PIN                            PB15  // "FAN2"
 
 
 /**
